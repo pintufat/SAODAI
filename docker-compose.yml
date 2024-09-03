@@ -65,11 +65,6 @@ services:
     command: [
       "--dir", "/var/lib/kvrocks/data"
     ]
-    # The kvrocks image a) has a healthcheck command, and b) has a root process
-    # that doesn't reap children, so it's susceptible to the problem described here:
-    # <https://stackoverflow.com/a/77109064>. Kvrocks also uses a tiny timeout for
-    # its healthcheck command (1s), which makes the problem more likely to manifest.
-    # Use a separate init process as a workaround.
     init: true
     volumes:
       - cvat_cache_db:/var/lib/kvrocks/data
@@ -83,8 +78,7 @@ services:
     depends_on:
       <<: *backend-deps
       cvat_opa:
-        condition:
-          service_started
+        condition: service_started
     environment:
       <<: [*backend-env, *clickhouse-env]
       DJANGO_MODWSGI_EXTRA_ARGS: ''
@@ -92,14 +86,13 @@ services:
       ADAPTIVE_AUTO_ANNOTATION: 'false'
       NUMPROCS: 2
       CVAT_ANALYTICS: 1
-      CVAT_BASE_URL:
-      ONE_RUNNING_JOB_IN_QUEUE_PER_USER:
+      CVAT_BASE_URL: ${CVAT_BASE_URL:-}
+      ONE_RUNNING_JOB_IN_QUEUE_PER_USER: 'false'
     command: init run server
     labels:
       - traefik.enable=true
       - traefik.http.services.cvat.loadbalancer.server.port=8080
-      - traefik.http.routers.cvat.rule=Host(`${CVAT_HOST:-localhost}`) &&
-        PathPrefix(`/api/`, `/static/`, `/admin`, `/documentation/`, `/django-rq`)
+      - traefik.http.routers.cvat.rule=Host(`${CVAT_HOST:-localhost}`) && PathPrefix(`/api/`, `/static/`, `/admin`, `/documentation/`, `/django-rq`)
       - traefik.http.routers.cvat.entrypoints=web
     volumes:
       - cvat_data:/home/django/data
@@ -250,11 +243,6 @@ services:
       DJANGO_LOG_VIEWER_PORT: 3000
 
       TRAEFIK_ACCESSLOG_FORMAT: json
-      # We ought to restrict which fields get logged, so as to avoid redundant information,
-      # but it doesn't work when configuring with environment variables:
-      # <https://github.com/traefik/traefik/issues/9755>.
-      # And we want to use environment variables to allow individual settings to be
-      # overridden by other Compose files.
       TRAEFIK_LOG_FORMAT: json
       TRAEFIK_ENTRYPOINTS_web_ADDRESS: :8080
       TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT: "false"
