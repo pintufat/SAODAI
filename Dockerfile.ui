@@ -1,11 +1,14 @@
+# Stage 1: Build CVAT UI
 FROM node:lts-slim AS cvat-ui
 
-ARG WA_PAGE_VIEW_HIT
-ARG UI_APP_CONFIG
-ARG CLIENT_PLUGINS
-ARG DISABLE_SOURCE_MAPS
-ARG SOURCE_MAPS_TOKEN
+# Define build arguments with default values
+ARG WA_PAGE_VIEW_HIT=""
+ARG UI_APP_CONFIG="{}"
+ARG CLIENT_PLUGINS=""
+ARG DISABLE_SOURCE_MAPS="false"
+ARG SOURCE_MAPS_TOKEN=""
 
+# Set environment variables
 ENV TERM=xterm \
     LANG='C.UTF-8'  \
     LC_ALL='C.UTF-8'
@@ -19,23 +22,29 @@ COPY cvat-canvas3d/package.json /tmp/cvat-canvas3d/
 COPY cvat-ui/package.json /tmp/cvat-ui/
 COPY cvat-data/package.json /tmp/cvat-data/
 
-# Install common dependencies
 WORKDIR /tmp/
+
+# Install common dependencies with frozen lockfile to ensure consistency
 RUN DISABLE_HUSKY=1 yarn --frozen-lockfile
 
-# Build source code
+# Copy source code and build the UI
 COPY cvat-data/ /tmp/cvat-data/
 COPY cvat-core/ /tmp/cvat-core/
 COPY cvat-canvas3d/ /tmp/cvat-canvas3d/
 COPY cvat-canvas/ /tmp/cvat-canvas/
 COPY cvat-ui/ /tmp/cvat-ui/
-RUN CLIENT_PLUGINS="${CLIENT_PLUGINS}" \
-DISABLE_SOURCE_MAPS="${DISABLE_SOURCE_MAPS}" \
-UI_APP_CONFIG="${UI_APP_CONFIG}" \
-SOURCE_MAPS_TOKEN="${SOURCE_MAPS_TOKEN}" yarn run build:cvat-ui
 
+# Run the build with environment variables
+RUN CLIENT_PLUGINS="${CLIENT_PLUGINS}" \
+    DISABLE_SOURCE_MAPS="${DISABLE_SOURCE_MAPS}" \
+    UI_APP_CONFIG="${UI_APP_CONFIG}" \
+    SOURCE_MAPS_TOKEN="${SOURCE_MAPS_TOKEN}" yarn run build:cvat-ui
+
+# Stage 2: Set up NGINX to serve the built UI
 FROM nginx:1.26.1-alpine3.19-slim
 
-# Replace default.conf configuration to remove unnecessary rules
+# Replace the default NGINX configuration with the custom one for CVAT UI
 COPY cvat-ui/react_nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy the built UI from the previous stage
 COPY --from=cvat-ui /tmp/cvat-ui/dist /usr/share/nginx/html/
