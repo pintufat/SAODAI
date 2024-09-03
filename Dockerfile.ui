@@ -35,10 +35,10 @@ COPY cvat-canvas/ /tmp/cvat-canvas/
 COPY cvat-ui/ /tmp/cvat-ui/
 
 # Run the build with environment variables
-RUN CLIENT_PLUGINS="${CLIENT_PLUGINS}" \
-    DISABLE_SOURCE_MAPS="${DISABLE_SOURCE_MAPS}" \
-    UI_APP_CONFIG="${UI_APP_CONFIG}" \
-    SOURCE_MAPS_TOKEN="${SOURCE_MAPS_TOKEN}" yarn run build:cvat-ui
+# RUN CLIENT_PLUGINS="${CLIENT_PLUGINS}" \
+    # DISABLE_SOURCE_MAPS="${DISABLE_SOURCE_MAPS}" \
+    # UI_APP_CONFIG="${UI_APP_CONFIG}" \
+    # SOURCE_MAPS_TOKEN="${SOURCE_MAPS_TOKEN}" yarn run build:cvat-ui
 
 # Stage 2: Set up NGINX to serve the built UI
 FROM nginx:1.26.1-alpine3.19-slim
